@@ -1,0 +1,357 @@
+<script src="{{ static_url }}/common/js/jquery-ui-1.11.4.js"></script>
+<link rel="stylesheet" href="{{ static_url }}/common/js/jquery-ui-sunny.css" />
+
+<link href="{{ static_url }}/common/js/select2.min.css" rel="stylesheet" />
+<script src="{{ static_url }}/common/js/select2.min.js"></script>
+
+<script src="/__moinfbp/easy_attach/static/easy_attach.js"></script>
+<link rel="stylesheet" href="/__moinfbp/easy_attach/static/easy_attach.css" />
+
+
+<div id="content">
+
+    {% if editor %}
+    
+    <div>
+        <u><b>아래 콤보박스를 선택하면 편집창에 링크가 자동으로 복사됩니다. (마지막  커서위치로 붙여넣기됩니다.)</b></u><br>
+        <select class="attachment_select" style="width: 42%">
+        <option value="3620194" selected="selected">문서에 첨부파일 붙여넣기</option>
+        </select>
+        <select class="attachments_select" style="width: 42%">
+        <option value="3620194" selected="selected">다른문서의 첨부파일 검색</option>
+        </select>
+        <select class="pagename_select" style="width: 42%">
+        <option value="3620194" selected="selected">문서이름링크</option>
+        </select>
+        <select class="recentchanges_select" style="width: 42%">
+        <option value="3620194" selected="selected">문서이름링크(최근변경)</option>
+        </select>
+    </div>
+
+    <p></p>
+    <b><u>새로운 파일을 upload하기. 완료후에는 위의 콤보박스에서 선택가능합니다.</u></b>
+    <br/>
+    
+    {% else %}
+    
+    <h2>Select a file(or a image)</h2>
+
+    {% endif %}
+
+
+    {% if may_write %}
+    <!-- form -->
+    <!-- <p id="status"></p> -->
+    <div id="progressbar"></div>
+    <input id="file" type="file" multiple/><input id='direct' type='checkbox'/> <label for='direct'>이미지를 사이즈보정없이 바로 올리기</label>
+    <div id="drop">or drop file(image) here</div>
+    <script>
+        $('#drop').bind('drop', function(e) {
+            handle_hover(e);
+            if (e.originalEvent.dataTransfer.files.length < 1) {
+                return;
+            }
+            //alert(e.originalEvent.dataTransfer.files[0].name);
+            var v;
+            var direct = $('#direct').prop('checked');
+            for (v = 0; v<e.originalEvent.dataTransfer.files.length; v++) {
+                file_select_handler(e.originalEvent.dataTransfer.files[v], '{{ attachment_path }}', direct);
+            }
+        }).bind('dragenter dragleave dragover', handle_hover);
+      
+        $('#file').change(function(e){
+            //alert(e.target.files[0].name);
+            var v;
+            var direct = $('#direct').prop('checked');
+            for (v = 0; v<e.target.files.length; v++) {
+                file_select_handler(e.target.files[v], '{{ attachment_path }}', direct);
+            }
+            e.target.value = '';
+        });
+        // sse();
+    </script>
+    
+    {% else %}
+
+    <div>권한이 없습니다.</div>
+
+    {% endif %}
+
+
+    {% if not editor %}
+
+    <h2>Attached Files</h2>
+    <button onclick="toggle_imginfo();">링크정보만 보이기</button>
+    <button onclick="reverse_att_lst();">시간순서 뒤집어서 목록표시</button>
+    <div id="attachments"></div>
+
+    <ul id='att_list'>
+        {% for file in files %}
+        <li>
+            <div>
+            		<span class='att_info'>({{ file['fmtime'] }}, {{ file['fsize'] }} KB)</span>
+            		<span style='background-color:yellow;'>{{ '{{' }}attachment:{{ file['file'] }}{{ '}}' }}</span>
+            </div>
+		        
+            {% if file['ext'] in ('.jpg', '.png', '.gif') %}
+		        <div>
+                <img src='{{ file['url'] }}' class='attachment' style='max-width:300px'>
+            </div>
+            {% elif file['ext'] in ('.mp3') %}
+            <div>
+                <audio src='{{ file['url'] }}' controls='controls'></audio>
+            </div>
+            {% elif file['ext'] in ('.mp4') %}
+            <div>
+                <video src='{{ file['url'] }}'></video>
+            </div>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+
+    {% endif %}
+
+</div>
+
+
+<script type='text/javascript'>
+
+function toggle_imginfo() {
+    $("img.attachment").toggle();
+    $("span.att_info").toggle();
+}
+function reverse_att_lst() {
+    var ul = $('#att_list'); // your parent ul element
+    ul.children().each(function(i,li){ul.prepend(li)})
+}
+
+
+$('.attachment_select').select2({
+    ajax: {
+        url: "?action=datasearch&typ=attachment&pagename={{ pagename }}",
+        dataType: 'json',
+        delay: 250,
+        data: function (params) {
+            return {
+                //name: params.term, // search term
+                page: params.page
+            };
+        },
+        processResults: function (data, params) {
+            // parse the results into the format expected by Select2.
+            // since we are using custom formatting functions we do not need to
+            // alter the remote JSON data
+
+            params.page = params.page || 1;
+
+            return {
+                results: data.items,
+                pagination: {
+                    more: data.more,
+                }
+            };
+        },
+        cache: true
+    },
+    minimumResultsForSearch: Infinity,
+    escapeMarkup: function (markup) { return markup; }, // let our custom formatter work
+    minimumInputLength: 0,
+    templateResult: attformatRepo, // omitted for brevity, see the source of this page
+    templateSelection: formatRepoSelection // omitted for brevity, see the source of this page
+}).change(function() {
+    var theSelection = $(this).select2('data')[0];
+    var ext;
+    var node;
+    var summernote;
+
+    if (theSelection.id != 3620194) {
+        summernote = $('#summernote');
+        if (summernote.length === 0) {
+            insert_textarea(theSelection.id);
+        }
+        else {
+            ext = theSelection.ext;
+            //console.log(ext);
+            if (ext == '.jpg' || ext == 'jpeg' || ext == '.gif' || ext == '.png') {
+                //console.log($('#summernote'));
+                summernote.summernote('insertNode', $('<img>', {'src': theSelection.src})[0]);
+            }
+            else {
+                node = document.createElement('a');
+                node.href = theSelection.src;
+                node.innerHTML = theSelection.text;
+                summernote.summernote('insertNode', node);
+            }
+            // $(this).val(3620194).trigger('change');
+        }
+    }
+});
+
+
+$('.attachments_select').select2({
+    ajax: {
+        url: "?action=datasearch&typ=attachments",
+        dataType: 'json',
+        delay: 250,
+        data: function (params) {
+            return {
+                name: params.term, // search term
+                page: params.page
+            };
+        },
+        processResults: function (data, params) {
+            // parse the results into the format expected by Select2.
+            // since we are using custom formatting functions we do not need to
+            // alter the remote JSON data
+
+            params.page = params.page || 1;
+
+            return {
+                results: data.items,
+                pagination: {
+                    more: data.more,
+                }
+            };
+        },
+        cache: true
+    },
+    // minimumResultsForSearch: Infinity,
+    escapeMarkup: function (markup) { return markup; }, // let our custom formatter work
+    minimumInputLength: 2,
+    templateResult: attsformatRepo, // omitted for brevity, see the source of this page
+    templateSelection: formatRepoSelection // omitted for brevity, see the source of this page
+}).change(function() {
+    var theSelection = $(this).select2('data')[0];
+    var ext;
+    var node;
+    var summernote;
+
+    if (theSelection.id != 3620194) {
+        summernote = $('#summernote');
+        if (summernote.length === 0) {
+            insert_textarea(theSelection.id);
+        }
+        else {
+            ext = theSelection.ext;
+            //console.log(ext);
+            if (ext == '.jpg' || ext == 'jpeg' || ext == '.gif' || ext == '.png') {
+                //console.log($('#summernote'));
+                summernote.summernote('insertNode', $('<img>', {'src': theSelection.src})[0]);
+            }
+            else {
+                node = document.createElement('a');
+                node.href = theSelection.src;
+                node.innerHTML = theSelection.text;
+                summernote.summernote('insertNode', node);
+            }
+            // $(this).val(3620194).trigger('change');
+        }
+    }
+});
+
+
+// pagename 검색에 대한 처리, 선택되면 바로 editor창에 입력된다.
+$('.pagename_select').select2({
+    ajax: {
+        url: "?action=datasearch&typ=name",
+        dataType: 'json',
+        delay: 250,
+        data: function (params) {
+            return {
+                name: params.term, // search term
+                page: params.page
+            };
+        },
+        processResults: function (data, params) {
+            // parse the results into the format expected by Select2.
+            // since we are using custom formatting functions we do not need to
+            // alter the remote JSON data
+
+            params.page = params.page || 1;
+
+            return {
+                results: data.items,
+                pagination: {
+                    more: data.more,
+                }
+            };
+        },
+        cache: true
+    },
+    escapeMarkup: function (markup) { return markup; }, // let our custom formatter work
+    minimumInputLength: 2,
+    templateResult: formatRepo, // omitted for brevity, see the source of this page
+    templateSelection: formatRepoSelection // omitted for brevity, see the source of this page
+}).change(function() {
+    var theSelection = $(this).select2('data')[0];
+    var node;
+    var summernote;
+
+    if (theSelection.id != 3620194) {
+        summernote = $('#summernote');
+        if (summernote.length === 0) {
+            insert_textarea(theSelection.id);
+        }
+        else {
+            node = document.createElement('a');
+            node.href = '{{ script_root }}/' + theSelection.text;
+            node.innerHTML = theSelection.text;
+            summernote.summernote('insertNode', node);
+        }
+    }
+});
+
+
+
+$('.recentchanges_select').select2({
+    ajax: {
+        url: "?action=datasearch&typ=recentchanges",
+        dataType: 'json',
+        delay: 250,
+        data: function (params) {
+            return {
+                //name: params.term, // search term
+                page: params.page
+            };
+        },
+        processResults: function (data, params) {
+            // parse the results into the format expected by Select2.
+            // since we are using custom formatting functions we do not need to
+            // alter the remote JSON data
+
+            params.page = params.page || 1;
+
+            return {
+                results: data.items,
+                pagination: {
+                    more: data.more,
+                }
+            };
+        },
+        cache: true
+    },
+    minimumResultsForSearch: Infinity,
+    escapeMarkup: function (markup) { return markup; }, // let our custom formatter work
+    minimumInputLength: 0,
+    templateResult: formatRepo, // omitted for brevity, see the source of this page
+    templateSelection: formatRepoSelection // omitted for brevity, see the source of this page
+}).change(function() {
+    var theSelection = $(this).select2('data')[0];
+    var node;
+    var summernote;
+
+    if (theSelection.id != 3620194) {
+        summernote = $('#summernote');
+        if (summernote.length === 0) {
+            insert_textarea(theSelection.id);
+        }
+        else {
+            node = document.createElement('a');
+            node.href = '{{ script_root }}/' + theSelection.text;
+            node.innerHTML = theSelection.text;
+            summernote.summernote('insertNode', node);
+        }
+    }
+});
+</script>

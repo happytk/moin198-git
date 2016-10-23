@@ -1,0 +1,35 @@
+<div class="recentchanges" lang="en" dir="ltr">
+{% for p in pages %}
+	<table class='aggr_table'>
+	<tbody>
+		<tr class='rcdaybreak'>
+			<td class='rawhtml'>
+				<b>{{ p.created_at }}</b>
+				[{{ p.page.link_to(request, text='link') }}]
+				<div style='float:right; text-align:right'>
+				[{{ p.page.link_to(request, text='edit', querystr={'action':'edit', 'backto': request.formatter.page.page_name}) }}]
+				[{{ p.page.link_to(request, text='del', querystr={'action':'DeletePage', 'backto': request.formatter.page.page_name}) }}]
+				</div>
+			</td>
+		</tr>
+		<tr>
+			<td class='rawhtml'>
+				{{ p.output }}
+			</td>
+		</tr>
+	</tbody>
+	</table>
+{% endfor %}
+
+</div>
+
+<div class="paging" style="width:100%">
+	{% if paging > 1 %}
+	<a href="?p={{ paging-1 }}">PREV</a>
+	{% endif %}
+	<div style='float:right; text-align:right'>
+	{% if paging < last_page %}
+	<a href="?p={{ paging+1 }}">OLDER</a>
+	{% endif %}
+	</div>
+</div>
