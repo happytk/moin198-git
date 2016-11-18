@@ -72,7 +72,8 @@ def handle_renamed(event):
         # staged and commit
         repo = _get_repo(event)
         repo.stage(staged)
-        repo.do_commit(message='renamed ' + event.page.page_name_fs)
+        ret = repo.do_commit(message='renamed ' + event.page.page_name_fs)
+        request.theme.add_msg('GIT Commited [%s]' % str(ret), "info")
 
 
 def handle_copied(event):
@@ -98,9 +99,9 @@ def handle_changed(event):
 
     repo = _get_repo(event)
     repo.stage([event.page.page_name_fs + EXT])
-    repo.do_commit(message='changed ' + event.page.page_name_fs)
+    ret = repo.do_commit(message='changed ' + event.page.page_name_fs)
 
-
+    request.theme.add_msg('GIT Commited [%s]' % str(ret), "info")
 
 def handle_deleted(event):
 
@@ -116,9 +117,12 @@ def handle_deleted(event):
 
         repo = _get_repo(event)
         repo.stage([event.page.page_name_fs + EXT])
-        repo.do_commit(message='renamed ' + event.page.page_name_fs)
+        ret = repo.do_commit(message='renamed ' + event.page.page_name_fs)
+
+        request.theme.add_msg('GIT Commited [%s]' % str(ret), "info")
     except OSError:
-        pass
+        request.theme.add_msg('GIT failed to commit [OSError]', "error")
+
 
 
 def handle_attachment_change(event):
@@ -126,7 +130,7 @@ def handle_attachment_change(event):
 
     if event.pagename.startswith('_'):
         return
-
+    request = event.request
     filename = os.path.join(event.pagename, 'attachments', event.filename)
     filepath = os.path.join(event.request.cfg.data_dir, 'pages', filename)
 
@@ -144,7 +148,8 @@ def handle_attachment_change(event):
 
     repo = _get_repo(event)
     repo.stage([filename, filename.encode('utf8')])
-    repo.do_commit(message)
+    ret = repo.do_commit(message)
+    request.theme.add_msg('GIT committed the attachment [%s]' % str(ret), "error")
 
 
 def handle(event):
