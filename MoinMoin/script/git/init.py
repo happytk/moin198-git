@@ -50,6 +50,9 @@ class PluginScript(MoinScript):
     quotepath = false
 [receive]
     denyCurrentBranch = updateInstead
+[user]
+    name = moinweb
+    email = moinweb@localhost
 ''')
 
     def make_gitignore(self, repo, page_dir):

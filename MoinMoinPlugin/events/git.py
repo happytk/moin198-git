@@ -73,7 +73,7 @@ def handle_renamed(event):
         repo = _get_repo(event)
         repo.stage(staged)
         ret = repo.do_commit(message='renamed ' + event.page.page_name_fs)
-        request.theme.add_msg('GIT Commited [%s]' % str(ret), "info")
+        request.theme.add_msg('Commited to the GIT repo [%s]' % str(ret), "info")
 
 
 def handle_copied(event):
@@ -101,7 +101,7 @@ def handle_changed(event):
     repo.stage([event.page.page_name_fs + EXT])
     ret = repo.do_commit(message='changed ' + event.page.page_name_fs)
 
-    request.theme.add_msg('GIT Commited [%s]' % str(ret), "info")
+    request.theme.add_msg('Commited to the GIT repo [%s]' % str(ret), "info")
 
 def handle_deleted(event):
 
@@ -119,9 +119,9 @@ def handle_deleted(event):
         repo.stage([event.page.page_name_fs + EXT])
         ret = repo.do_commit(message='renamed ' + event.page.page_name_fs)
 
-        request.theme.add_msg('GIT Commited [%s]' % str(ret), "info")
+        request.theme.add_msg('Commited to the GIT repo [%s]' % str(ret), "info")
     except OSError:
-        request.theme.add_msg('GIT failed to commit [OSError]', "error")
+        request.theme.add_msg('Failed to git-commit [OSError]', "error")
 
 
 
@@ -135,21 +135,16 @@ def handle_attachment_change(event):
     filepath = os.path.join(event.request.cfg.data_dir, 'pages', filename)
 
     deleted = not os.path.exists(filepath)
-    if deleted: message = 'deleted(attch)'
-    else: message = 'attached'
-
-    # if deleted:
-    #     filename = filename.encode('utf8')
-
-    # # request = event.request
-    # tst = 'FrontPage/attachments/한글.xls'
-    # if tst != filename:
-    #     import pdb; pdb.set_trace()
+    if deleted:
+        message = u'deleted-attachment'
+    else:
+        message = u'new-attachment'
 
     repo = _get_repo(event)
     repo.stage([filename, filename.encode('utf8')])
     ret = repo.do_commit(message)
-    request.theme.add_msg('GIT committed the attachment [%s]' % str(ret), "error")
+
+    request.theme.add_msg('[GIT] %s: %s [%s]' % (message, filename, str(ret)), "info")
 
 
 def handle(event):
